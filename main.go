@@ -16,8 +16,8 @@ type Update struct {
 	Time  time.Time
 }
 
-var previous = Update{Value: 0, Time: time.Now()}
-var current = Update{Value: 0, Time: time.Now()}
+var previous = Update{Value: 0, Time: time.Time{}}
+var current = Update{Value: 0, Time: time.Time{}}
 
 func main() {
 	buf, _ := os.ReadFile("index.html")
@@ -42,27 +42,43 @@ func main() {
 
 func update_counter() {
 	client := &http.Client{}
+	update(client)
 
 	for {
-		resp, _ := client.Get("https://hub.docker.com/v2/namespaces/nginx/repositories/nginx-ingress/")
-		if resp.StatusCode == http.StatusOK {
-			bodyBytes, err := io.ReadAll(resp.Body)
-			if err != nil {
-				log.Fatal(err)
-			}
-			bodyString := string(bodyBytes)
-			var data map[string]interface{}
-			_ = json.Unmarshal([]byte(string(bodyString)), &data)
-			if err != nil {
-				fmt.Printf("could not unmarshal json: %s\n", err)
-			}
-			previous.Time = current.Time
-			previous.Value = current.Value
-			current.Time, err = time.Parse(time.RFC3339, data["last_updated"].(string))
-			current.Value = int(data["pull_count"].(float64))
-		}
-		fmt.Printf("%s: %d\n", current.Time, current.Value)
-		resp.Body.Close()
-		time.Sleep(10 * time.Second)
+		update(client)
 	}
+}
+
+func update(client *http.Client) {
+	resp, _ := client.Get("https://hub.docker.com/v2/namespaces/nginx/repositories/nginx-ingress/")
+	if resp.StatusCode == http.StatusOK {
+		bodyBytes, err := io.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		bodyString := string(bodyBytes)
+		var data map[string]interface{}
+		_ = json.Unmarshal([]byte(string(bodyString)), &data)
+		if err != nil {
+			fmt.Printf("could not unmarshal json: %s\n", err)
+		}
+		if current.Value != int(data["pull_count"].(float64)) {
+			if current.Time.IsZero() {
+				current.Time = time.Now()
+				current.Value = int(data["pull_count"].(float64))
+			} else if previous.Time.IsZero() {
+				previous = current
+				current.Time = time.Time{}
+				current.Value = 0
+			} else {
+				previous.Time = current.Time
+				previous.Value = current.Value
+				current.Time = time.Now()
+				current.Value = int(data["pull_count"].(float64))
+			}
+		}
+	}
+	// fmt.Printf("%s: %d\n", current.Time, current.Value)
+	resp.Body.Close()
+	time.Sleep(10 * time.Second)
 }

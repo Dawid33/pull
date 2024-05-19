@@ -14,6 +14,7 @@
 </body>
 
 <script>
+  var last_known = 0;
   var current = 0;
   var rate = 0;
 
@@ -26,7 +27,7 @@
   cnt = document.getElementById("counter")
   intervalTimer = setInterval(function () {
     current += rate;
-    counter.innerHTML = current;
+    counter.innerHTML = Math.round(current);
   }, 100);
 
   function update() {
@@ -35,20 +36,36 @@
     }).then((text) => {
       console.log(text)
       obj = JSON.parse(text)
-      console.log(obj)
-      time_diff = obj.next.time - obj.previous.time
-      console.log(time_diff)
-      value_diff = obj.next.value - obj.previous.value
-      console.log("value_diff: ", value_diff)
-      if (isNaN(value_diff / time_diff / 10) || time_diff == 0) {
-        rate = 0;
-      } else {
-        rate = value_diff / time_diff / 10;
+      if (current == 0) {
+        current = obj.previous.value;
       }
-      if (current <= obj.previous.value) {
-        current = obj.previous.value
+
+      if (obj.next.value != last_known) {
+        last_known = obj.next.value;
+        console.log(obj)
+        time_diff = obj.next.time - obj.previous.time
+        console.log(time_diff)
+        value_diff = 0
+        if (current > obj.previous.value) {
+          value_diff = obj.next.value - current
+        } else {
+          value_diff = obj.next.value - obj.previous.value
+        }
+        console.log("value_diff: ", value_diff)
+        if (isNaN(value_diff / time_diff / 10) || time_diff == 0) {
+          rate = 0;
+        } else {
+          rate = value_diff / time_diff / 10
+            ;
+        }
+        if (current <= obj.previous.value) {
+          current = obj.previous.value
+        }
+        if (current >= obj.next.value) {
+          current = obj.previous.value
+        }
+        console.log("rate: ", rate)
       }
-      console.log("rate: ", rate)
     })
   }
 </script>
