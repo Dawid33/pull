@@ -1,0 +1,56 @@
+<html>
+
+<head>
+  <title>
+    Update Counter
+  </title>
+</head>
+
+<body>
+  <h1>Update Counter</h1>
+  <p id="counter">
+    {{ .Value}}
+  </p>
+</body>
+
+<script>
+  var current = 0;
+  var rate = 0;
+
+  update()
+
+  setInterval(function () {
+    update()
+  }, 1000 * 5);
+
+  cnt = document.getElementById("counter")
+  intervalTimer = setInterval(function () {
+    current += rate;
+    counter.innerHTML = current;
+  }, 100);
+
+  function update() {
+    fetch("http://localhost:8080/current").then((response) => {
+      return response.text();
+    }).then((text) => {
+      console.log(text)
+      obj = JSON.parse(text)
+      console.log(obj)
+      time_diff = obj.next.time - obj.previous.time
+      console.log(time_diff)
+      value_diff = obj.next.value - obj.previous.value
+      console.log("value_diff: ", value_diff)
+      if (isNaN(value_diff / time_diff / 10) || time_diff == 0) {
+        rate = 0;
+      } else {
+        rate = value_diff / time_diff / 10;
+      }
+      if (current <= obj.previous.value) {
+        current = obj.previous.value
+      }
+      console.log("rate: ", rate)
+    })
+  }
+</script>
+
+</html>
